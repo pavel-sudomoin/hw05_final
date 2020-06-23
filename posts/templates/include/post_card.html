@@ -1,4 +1,5 @@
 <div class="card mb-3 mt-1 shadow-sm">
+  {% include "include/image.html" with post=post %}
   <div class="card-body">
     <p class="card-text">
       <a href="{% url 'profile' author.username %}"><strong class="d-block text-gray-dark">@{{ author.username }}</strong></a>

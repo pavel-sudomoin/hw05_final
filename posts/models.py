@@ -28,9 +28,10 @@ class Post(models.Model):
         on_delete=models.CASCADE,
         related_name="posts"
     )
+    image = models.ImageField(upload_to="posts/", blank=True, null=True)
 
     def __str__(self):
         return self.text
 
     class Meta:
-        ordering = ['-pub_date']
+        ordering = ["-pub_date"]
