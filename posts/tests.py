@@ -155,3 +155,7 @@ class PostTest(TestCase):
 
         self.assertIsInstance(response.context["user"], User)
         self.assertEqual(response.context["user"].username, self.user.username)
+
+    def test_404_response(self):
+        response = self.auth_client.get("/some-wrong-test-url/")
+        self.assertEqual(response.status_code, 404)
