@@ -67,13 +67,16 @@ class PostTest(TestCase):
             return response.context["post"]
 
     def add_post(self, c, text, group):
-        response = c.post(
-            reverse("new_post"),
-            data={
-                "text": text,
-                "group": group.pk},
-            follow=True
-        )
+        with open('1.jpg','rb') as img:
+            response = c.post(
+                reverse("new_post"),
+                data={
+                    "text": text,
+                    "group": group.pk,
+                    "image": img
+                },
+                follow=True
+            )
         self.assertEqual(response.status_code, 200)
         return self.user.posts.get(text=text)
 
@@ -111,6 +114,13 @@ class PostTest(TestCase):
             self.assertEqual(post_from_context.group, group)
             self.assertEqual(post_from_context.text, post.text)
             self.assertEqual(Post.objects.count(), 1)
+            self.assertContains(
+                response,
+                "<img",
+                count=1,
+                status_code=200,
+                html=False
+            )
 
     def test_post_auth_user(self):
         c = self.auth_client
