@@ -1,6 +1,4 @@
-from django.test import TestCase
-
-from django.test import Client
+from django.test import TestCase, Client, override_settings
 
 from django.contrib.auth import get_user_model
 
@@ -8,11 +6,32 @@ from django.urls import reverse
 
 from .models import Post, Group
 
+from shutil import rmtree
+
+from PIL import Image
+
+import tempfile
+
 
 User = get_user_model()
 
+MEDIA_ROOT = tempfile.mkdtemp()
+print(MEDIA_ROOT)
 
+
+@override_settings(MEDIA_ROOT=MEDIA_ROOT)
 class PostTest(TestCase):
+    def _create_image(self):
+        with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
+            image = Image.new('RGB', (200, 200), 'white')
+            image.save(f, 'PNG')
+        return open(f.name, mode='rb')
+
+    def _create_txt(self):
+        with tempfile.NamedTemporaryFile(suffix='.txt', delete=False) as f:
+            f.write(b'Hello world!')
+        return open(f.name, mode='rb')
+
     def setUp(self):
         self.unauth_client = Client()
         self.auth_client = Client()
@@ -36,8 +55,21 @@ class PostTest(TestCase):
             "Lorem ipsum dolor sit amet",
             "consectetur adipiscing elit"
         ]
+        self.files = {
+            "img": [self._create_image(),
+                    self._create_image()],
+            "txt": [self._create_txt()]
+        }
+        self.form_error_messages = {
+            "image_wrong_file": "Загрузите правильное изображение. "
+            f"Файл, который вы загрузили, поврежден "
+            f"или не является изображением."
+        }
 
         self.auth_client.force_login(self.user)
+
+    def tearDown(self):
+        rmtree(MEDIA_ROOT, ignore_errors=True)
 
     def create_url_list_for_check_post(self, post, group):
         return [
@@ -60,38 +92,48 @@ class PostTest(TestCase):
             }
         ]
 
+    def create_post_data(self, var, filetype="img"):
+        return {
+            "text": self.texts[var],
+            "group": self.groups[var],
+            "image": self.files[filetype][var]
+        }
+
+    def post_data_wrapper(self, data):
+        return {
+            "text": data["text"],
+            "group": data["group"].pk,
+            "image": data["image"]
+        }
+
+    def post_response_handler(self, response, data):
+        self.assertEqual(response.status_code, 200)
+        return self.user.posts.get(text=data["text"])
+
     def return_post_from_context(self, response):
         if "paginator" in response.context:
             return response.context["page"][0]
         else:
             return response.context["post"]
 
-    def add_post(self, c, text, group):
-        with open('1.jpg','rb') as img:
-            response = c.post(
-                reverse("new_post"),
-                data={
-                    "text": text,
-                    "group": group.pk,
-                    "image": img
-                },
-                follow=True
-            )
-        self.assertEqual(response.status_code, 200)
-        return self.user.posts.get(text=text)
+    def add_post(self, c, data):
+        return c.post(
+            reverse("new_post"),
+            data=self.post_data_wrapper(data),
+            follow=True
+        )
 
-    def edit_post(self, c, text, post, group):
-        response = c.post(
+    def edit_post(self, c, post, data):
+        return c.post(
             reverse("post_edit", kwargs={
                 "username": self.user.username,
                 "post_id": post.pk}),
-            data={'text': text, "group": group.pk},
+            data=self.post_data_wrapper(data),
             follow=True
         )
-        self.assertEqual(response.status_code, 200)
-        return self.user.posts.get(text=text)
 
-    def check_post(self, c, post, group):
+    def check_post(self, c, post, data):
+        group = data["group"]
         url_list = self.create_url_list_for_check_post(post, group)
 
         for url in url_list:
@@ -113,40 +155,54 @@ class PostTest(TestCase):
             )
             self.assertEqual(post_from_context.group, group)
             self.assertEqual(post_from_context.text, post.text)
-            self.assertEqual(Post.objects.count(), 1)
             self.assertContains(
                 response,
                 "<img",
                 count=1,
-                status_code=200,
                 html=False
             )
+
+        self.assertEqual(Post.objects.count(), 1)
 
     def test_post_auth_user(self):
         c = self.auth_client
 
-        group = self.groups[0]
-        text = self.texts[0]
-        post = self.add_post(c, text, group)
-        self.check_post(c, post, group)
+        data = self.create_post_data(0)
+        response = self.add_post(c, data)
+        post = self.post_response_handler(response, data)
+        self.check_post(c, post, data)
 
-        group = self.groups[1]
-        text = self.texts[1]
-        post = self.edit_post(c, text, post, group)
-        self.assertEqual(post.text, text)
-        self.check_post(c, post, group)
+        data = self.create_post_data(1)
+        response = self.edit_post(c, post, data)
+        post = self.post_response_handler(response, data)
+        self.check_post(c, post, data)
 
     def test_post_unauth_user(self):
-        response = self.unauth_client.post(
-            reverse("new_post"),
-            data={"text": "test"}
-        )
+        c = self.unauth_client
+
+        data = self.create_post_data(0)
+        response = self.add_post(c, data)
+
         self.assertRedirects(
             response,
             f"{reverse('login')}?next=/new/",
             status_code=302,
             target_status_code=200,
             fetch_redirect_response=True
+        )
+        self.assertEqual(Post.objects.count(), 0)
+
+    def test_wrong_image(self):
+        c = self.auth_client
+
+        data = self.create_post_data(0, filetype="txt")
+        response = self.add_post(c, data)
+
+        self.assertFormError(
+            response,
+            "form",
+            "image",
+            self.form_error_messages["image_wrong_file"]
         )
         self.assertEqual(Post.objects.count(), 0)
 
