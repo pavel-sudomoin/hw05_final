@@ -2,7 +2,7 @@ from django.forms import ModelForm
 
 from django.utils.translation import gettext_lazy as _
 
-from .models import Post
+from .models import Post, Comment
 
 
 class PostForm(ModelForm):
@@ -22,5 +22,22 @@ class PostForm(ModelForm):
         error_messages = {
             "text": {
                 "required": _("Вы не добавили текст поста"),
+            },
+        }
+
+
+class CommentForm(ModelForm):
+    class Meta:
+        model = Comment
+        fields = ["text"]
+        labels = {
+            "text": _("Текст комментария")
+        }
+        help_texts = {
+            "text": _("Введите текст комментария"),
+        }
+        error_messages = {
+            "text": {
+                "required": _("Вы не добавили текст комментария"),
             },
         }

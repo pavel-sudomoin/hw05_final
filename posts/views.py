@@ -6,9 +6,9 @@ from django.contrib.auth import get_user_model
 
 from django.core.paginator import Paginator
 
-from .models import Post, Group
+from .models import Post, Group, Comment
 
-from .forms import PostForm
+from .forms import PostForm, CommentForm
 
 
 User = get_user_model()
@@ -40,7 +40,6 @@ def group_posts(request, slug):
 
 @login_required
 def new_post(request):
-    #form = PostForm(request.POST or None)
     form = PostForm(request.POST or None, files=request.FILES or None)
     if form.is_valid():
         post = form.save(commit=False)
@@ -71,9 +70,13 @@ def profile(request, username):
 def post_view(request, username, post_id):
     author = get_object_or_404(User, username=username)
     post = get_object_or_404(Post, pk=post_id, author__username=username)
+    comments = post.comments.all()
+    form = CommentForm()
     return render(request, "post.html", {
         "author": author,
         "post": post,
+        "form": form,
+        "comments": comments,
         "author_posts_count": author.posts.count()
     })
 
@@ -84,7 +87,11 @@ def post_edit(request, username, post_id):
         return redirect("post", username=username, post_id=post_id)
 
     post = get_object_or_404(Post, pk=post_id, author__username=username)
-    form = PostForm(request.POST or None, files=request.FILES or None, instance=post)
+    form = PostForm(
+        request.POST or None,
+        files=request.FILES or None,
+        instance=post
+    )
     if form.is_valid():
         form.save()
         return redirect("post", username=username, post_id=post_id)
@@ -96,6 +103,7 @@ def post_edit(request, username, post_id):
         "button": "Сохранить"
     })
 
+
 def page_not_found(request, exception):
     return render(
         request,
@@ -104,5 +112,18 @@ def page_not_found(request, exception):
         status=404
     )
 
+
 def server_error(request):
     return render(request, "misc/500.html", status=500)
+
+
+@login_required
+def add_comment(request, username, post_id):
+    form = CommentForm(request.POST or None)
+    if form.is_valid():
+        post = get_object_or_404(Post, pk=post_id, author__username=username)
+        comment = form.save(commit=False)
+        comment.author = request.user
+        comment.post = post
+        comment.save()
+    return redirect("post", username=username, post_id=post_id)
