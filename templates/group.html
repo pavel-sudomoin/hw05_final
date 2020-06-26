@@ -7,12 +7,7 @@
   <p>{{ group.description }}</p>
 
   {% for post in page %}
-    {% include "include/image.html" with post=post %}
-    <h3>
-      Автор: {{ post.author.get_full_name }}, Дата публикации: {{ post.pub_date|date:"d M Y" }}
-    </h3>
-    <p>{{ post.text|linebreaksbr }}</p>
-    <hr>
+    {% include "include/post_card.html" with post=post add_comment=True %}
   {% endfor %}
 
   {% if page.has_other_pages %}

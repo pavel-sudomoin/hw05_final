@@ -8,7 +8,7 @@
       {% include "include/author_card.html" with author=author author_posts_count=author_posts_count %}
       <div class="col-md-9">
         {% for post in page %}
-          {% include "include/post_card.html" with author=author post=post add_comment=True %}
+          {% include "include/post_card.html" with post=post add_comment=True %}
         {% endfor %}
         {% if page.has_other_pages %}
           {% include "include/paginator.html" with items=page paginator=paginator %}

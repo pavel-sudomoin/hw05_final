@@ -7,7 +7,7 @@
     <div class="row">
       {% include "include/author_card.html" with author=author author_posts_count=author_posts_count %}
       <div class="col-md-9">
-        {% include "include/post_card.html" with author=author post=post %}
+        {% include "include/post_card.html" with post=post %}
         {% include "include/comments.html" with form=form comments=comments %}
       </div>
     </div>
