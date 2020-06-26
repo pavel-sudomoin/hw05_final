@@ -12,6 +12,8 @@ from PIL import Image
 
 import tempfile
 
+import time
+
 
 User = get_user_model()
 
@@ -21,6 +23,9 @@ print(MEDIA_ROOT)
 
 @override_settings(MEDIA_ROOT=MEDIA_ROOT)
 class PostTest(TestCase):
+    CACHE_TIME = 21
+
+
     def _create_image(self):
         with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
             image = Image.new('RGB', (200, 200), 'white')
@@ -133,6 +138,8 @@ class PostTest(TestCase):
         )
 
     def check_post(self, c, post, data):
+        time.sleep(self.CACHE_TIME)
+
         group = data["group"]
         url_list = self.create_url_list_for_check_post(post, group)
 
@@ -164,6 +171,15 @@ class PostTest(TestCase):
 
         self.assertEqual(Post.objects.count(), 1)
 
+    def check_cache_main_page(self, c, post):
+        response = c.post(reverse("index"), follow=True)
+        self.assertNotContains(
+            response,
+            post.text,
+            status_code=200,
+            html=False
+        )
+
     def test_post_auth_user(self):
         c = self.auth_client
 
@@ -175,7 +191,20 @@ class PostTest(TestCase):
         data = self.create_post_data(1)
         response = self.edit_post(c, post, data)
         post = self.post_response_handler(response, data)
+        self.check_cache_main_page(c, post)
         self.check_post(c, post, data)
+
+    def test_cache(self):
+        c = self.auth_client
+
+        data = self.create_post_data(0)
+        self.add_post(c, data)
+
+        data = self.create_post_data(1)
+        response = self.add_post(c, data)
+        post = self.post_response_handler(response, data)
+
+        self.check_cache_main_page(c, post)
 
     def test_post_unauth_user(self):
         c = self.unauth_client
