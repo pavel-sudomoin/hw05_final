@@ -9,6 +9,7 @@
                 <form>
                     <div class="form-group">
                         {{ form.text|addclass:"form-control" }}
+                        <small id="{{ form.text.id_for_label }}-help" class="form-text text-muted">{{ form.text.help_text|safe }}</small>
                     </div>
                     <button type="submit" class="btn btn-primary">Отправить</button>
                 </form>
