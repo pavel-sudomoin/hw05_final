@@ -37,7 +37,7 @@ class Post(models.Model):
         ordering = ["-pub_date"]
 
 
-class Comment(models.Model):    
+class Comment(models.Model):
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
@@ -56,3 +56,17 @@ class Comment(models.Model):
 
     class Meta:
         ordering = ["-created"]
+
+
+class Follow(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="follower"
+    )
+    author = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name="following",
+        blank=True, null=True
+    )
