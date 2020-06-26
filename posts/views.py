@@ -6,12 +6,19 @@ from django.contrib.auth import get_user_model
 
 from django.core.paginator import Paginator
 
-from .models import Post, Group, Comment
+from .models import Post, Group, Comment, Follow
 
 from .forms import PostForm, CommentForm
 
 
 User = get_user_model()
+
+
+def get_object_or_none(klass, *args, **kwargs):
+    try:
+        return klass._default_manager.get(*args, **kwargs)
+    except klass.DoesNotExist:
+        return None
 
 
 def index(request):
@@ -127,3 +134,29 @@ def add_comment(request, username, post_id):
         comment.post = post
         comment.save()
     return redirect("post", username=username, post_id=post_id)
+
+
+@login_required
+def follow_index(request):
+    subscriptions = get_object_or_none(Follow, user=request.user)
+    if subscriptions:
+        pass
+    else:
+        posts = Post.objects.none()
+    paginator = Paginator(posts, 10)
+    page_number = request.GET.get('page')
+    page = paginator.get_page(page_number)
+    return render(request, "follow.html", {
+        "page": page,
+        "paginator": paginator
+    })
+
+
+@login_required
+def profile_follow(request, username):
+    pass
+
+
+@login_required
+def profile_unfollow(request, username):
+    pass

@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Последние обновления на сайте{% endblock %}
+{% block title %}Ваша лента{% endblock %}
 {% block content %}
 
     {% load cache %}
 
-    {% include "include/menu.html" with index=True %}
+    {% include "include/menu.html" with follow=True %}
 
-    <h1>Последние обновления на сайте</h1>
+    <h1>Посты от аторов, на которых вы подписаны</h1>
 
-    {% cache 20 index_page %}
+    {% cache 20 follow_page %}
 
         {% for post in page %}
             {% include "include/post_card.html" with post=post add_comment=True %}
