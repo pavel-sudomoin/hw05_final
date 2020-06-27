@@ -152,13 +152,8 @@ def add_comment(request, username, post_id):
 @login_required
 def follow_index(request):
     subscriptions = Follow.objects.filter(user=request.user)
-    authors = []
-    for subscription in subscriptions:
-        authors.append(subscription.author)
-    if subscriptions:
-        posts = Post.objects.filter(author__in=authors)
-    else:
-        posts = Post.objects.none()
+    authors = [sub.author for sub in subscriptions]
+    posts = Post.objects.filter(author__in=authors)
     paginator_data = create_paginator(request, posts)
     return render(request, "follow.html", {
         "page": paginator_data["page"],
