@@ -166,7 +166,6 @@ def profile_follow(request, username):
     author = get_object_or_404(User, username=username)
     if author != request.user:
         Follow.objects.get_or_create(user=request.user, author=author)
-    print(Follow.objects.count())
     return redirect("profile", username=username)
 
 
@@ -177,5 +176,4 @@ def profile_unfollow(request, username):
         Follow.objects.get(user=request.user, author=author).delete()
     except Follow.DoesNotExist:
         pass
-    print(Follow.objects.count())
     return redirect("profile", username=username)
