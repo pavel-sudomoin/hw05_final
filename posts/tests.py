@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 
 from django.urls import reverse
 
-from .models import Post, Group
+from .models import Post, Group, Comment
 
 from shutil import rmtree
 
@@ -46,6 +46,7 @@ class PostTest(TestCase):
             email="test@test.com",
             password="12345"
         )
+
         self.groups = [
             Group.objects.create(
                 title="test_title_1",
@@ -71,6 +72,8 @@ class PostTest(TestCase):
             f"или не является изображением."
         }
 
+        self.comment_text = "comment_test_text"
+
         self.auth_client.force_login(self.user)
 
     def tearDown(self):
@@ -80,20 +83,24 @@ class PostTest(TestCase):
         return [
             {
                 "nameview": "index",
-                "kwargs": {}
+                "kwargs": {},
+                "display_comments": False
             },
             {
                 "nameview": "group_posts",
-                "kwargs": {"slug": group.slug}
+                "kwargs": {"slug": group.slug},
+                "display_comments": False
             },
             {
                 "nameview": "profile",
-                "kwargs": {"username": self.user.username}
+                "kwargs": {"username": self.user.username},
+                "display_comments": False
             },
             {
                 "nameview": "post",
                 "kwargs": {"username": self.user.username,
-                           "post_id": post.pk}
+                           "post_id": post.pk},
+                "display_comments": True
             }
         ]
 
@@ -103,6 +110,9 @@ class PostTest(TestCase):
             "group": self.groups[var],
             "image": self.files[filetype][var]
         }
+
+    def create_comment_data(self):
+        return {"text": self.comment_text}
 
     def post_data_wrapper(self, data):
         return {
@@ -114,6 +124,10 @@ class PostTest(TestCase):
     def post_response_handler(self, response, data):
         self.assertEqual(response.status_code, 200)
         return self.user.posts.get(text=data["text"])
+
+    def comment_response_handler(self, response, data):
+        self.assertEqual(response.status_code, 200)
+        return Comment.objects.get(text=data["text"])
 
     def return_post_from_context(self, response):
         if "paginator" in response.context:
@@ -134,6 +148,15 @@ class PostTest(TestCase):
                 "username": self.user.username,
                 "post_id": post.pk}),
             data=self.post_data_wrapper(data),
+            follow=True
+        )
+
+    def add_comment(self, c, post, data):
+        return c.post(
+            reverse("add_comment", kwargs={
+                "username": self.user.username,
+                "post_id": post.pk}),
+            data=data,
             follow=True
         )
 
@@ -170,6 +193,37 @@ class PostTest(TestCase):
             )
 
         self.assertEqual(Post.objects.count(), 1)
+
+    def check_comment(self, c, post, comment, post_data, comment_data):
+        time.sleep(self.CACHE_TIME)
+
+        group = post_data["group"]
+        url_list = self.create_url_list_for_check_post(post, group)
+
+        for url in url_list:
+            response = c.post(
+                reverse(url["nameview"], kwargs=url["kwargs"]),
+                follow=True
+            )
+            if url["display_comments"]:
+                self.assertContains(
+                    response,
+                    comment.text,
+                    count=1,
+                    status_code=200,
+                    html=False
+                )
+            post_from_context = self.return_post_from_context(response)
+            comments_from_context = post_from_context.comments.all()
+            self.assertEqual(comments_from_context.count(), 1)
+            comment_from_context = comments_from_context[0]
+            self.assertEqual(
+                comment_from_context.author.username,
+                self.user.username
+            )
+            self.assertEqual(comment_from_context.text, comment.text)
+
+        self.assertEqual(Comment.objects.count(), 1)
 
     def check_cache_main_page(self, c, post):
         response = c.post(reverse("index"), follow=True)
@@ -234,6 +288,44 @@ class PostTest(TestCase):
             self.form_error_messages["image_wrong_file"]
         )
         self.assertEqual(Post.objects.count(), 0)
+
+    def test_comment_auth_user(self):
+        c = self.auth_client
+
+        post_data = self.create_post_data(0)
+        post_response = self.add_post(c, post_data)
+        post = self.post_response_handler(post_response, post_data)
+
+        comment_data = self.create_comment_data()
+        comment_response = self.add_comment(c, post, comment_data)
+        comment = self.comment_response_handler(comment_response, comment_data)
+        self.check_comment(
+            c,
+            comment=comment,
+            post=post,
+            comment_data=comment_data,
+            post_data=post_data
+        )
+
+    def test_comment_unauth_user(self):
+        auth_client = self.auth_client
+        unauth_client = self.unauth_client
+
+        post_data = self.create_post_data(0)
+        post_response = self.add_post(auth_client, post_data)
+        post = self.post_response_handler(post_response, post_data)
+
+        comment_data = self.create_comment_data()
+        comment_response = self.add_comment(unauth_client, post, comment_data)
+
+        self.assertRedirects(
+            comment_response,
+            f"{reverse('login')}?next=/{self.user.username}/{post.pk}/comment",
+            status_code=302,
+            target_status_code=200,
+            fetch_redirect_response=True
+        )
+        self.assertEqual(Comment.objects.count(), 0)
 
     def test_profile(self):
         response = self.auth_client.post(

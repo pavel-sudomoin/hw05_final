@@ -88,14 +88,12 @@ def profile(request, username):
 def post_view(request, username, post_id):
     post = get_object_or_404(Post, pk=post_id, author__username=username)
     author = post.author
-    comments = post.comments.all()
     form = CommentForm()
     subscriptions = get_subscriptions(user=request.user, author=author)
     return render(request, "post.html", {
         "author": author,
         "post": post,
         "form": form,
-        "comments": comments,
         "author_posts_count": author.posts.count(),
         "subscriptions": subscriptions
     })

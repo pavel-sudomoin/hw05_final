@@ -8,7 +8,7 @@
       {% include "include/author_card.html" with author=author subscriptions=subscriptions author_posts_count=author_posts_count %}
       <div class="col-md-9">
         {% include "include/post_card.html" with post=post %}
-        {% include "include/comments.html" with form=form comments=comments %}
+        {% include "include/comments.html" with form=form comments=post.comments.all %}
       </div>
     </div>
   </main>
