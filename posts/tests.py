@@ -186,6 +186,15 @@ class PostTest(TestCase):
         post = self.post_response_handler(response, data)
         return (data, post)
 
+    def check_login_redirect(self, response, url):
+        self.assertRedirects(
+            response,
+            url,
+            status_code=302,
+            target_status_code=200,
+            fetch_redirect_response=True
+        )
+
     def check_post(self, c, post, data):
         time.sleep(self.CACHE_TIME)
 
@@ -337,13 +346,11 @@ class PostTest(TestCase):
         data = self.create_post_data(0)
         response = self.add_post(c, data)
 
-        self.assertRedirects(
+        self.check_login_redirect(
             response,
-            f"{reverse('login')}?next=/new/",
-            status_code=302,
-            target_status_code=200,
-            fetch_redirect_response=True
+            f"{reverse('login')}?next=/new/"
         )
+
         self.assertEqual(Post.objects.count(), 0)
 
     def test_follow_unauth_user(self):
@@ -353,13 +360,11 @@ class PostTest(TestCase):
         c = self.unauth_client
         response = self.subscribe(c, author=self.user)
 
-        self.assertRedirects(
+        self.check_login_redirect(
             response,
-            f"{reverse('login')}?next=/{self.user.username}/follow/",
-            status_code=302,
-            target_status_code=200,
-            fetch_redirect_response=True
+            f"{reverse('login')}?next=/{self.user.username}/follow/"
         )
+
         self.assertEqual(Follow.objects.count(), 0)
 
     def test_wrong_image(self):
@@ -398,16 +403,14 @@ class PostTest(TestCase):
 
         _, post = self.add_post_handler(auth_client, num=0)
 
-        comment_data = self.create_comment_data()
-        comment_response = self.add_comment(unauth_client, post, comment_data)
+        data = self.create_comment_data()
+        response = self.add_comment(unauth_client, post, data)
 
-        self.assertRedirects(
-            comment_response,
-            f"{reverse('login')}?next=/{self.user.username}/{post.pk}/comment",
-            status_code=302,
-            target_status_code=200,
-            fetch_redirect_response=True
+        self.check_login_redirect(
+            response,
+            f"{reverse('login')}?next=/{self.user.username}/{post.pk}/comment"
         )
+
         self.assertEqual(Comment.objects.count(), 0)
 
     def test_profile(self):
