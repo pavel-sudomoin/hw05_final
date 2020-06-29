@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 
 from django.urls import reverse
 
-from .models import Post, Group, Comment
+from .models import Post, Group, Comment, Follow
 
 from shutil import rmtree
 
@@ -41,11 +41,18 @@ class PostTest(TestCase):
         self.unauth_client = Client()
         self.auth_client = Client()
 
-        self.user = User.objects.create_user(
-            username="test_user",
-            email="test@test.com",
-            password="12345"
-        )
+        self.users = [
+            User.objects.create_user(
+                username="test_user_1",
+                email="test_1@test.com",
+                password="12345"
+            ),
+            User.objects.create_user(
+                username="test_user_2",
+                email="test_2@test.com",
+                password="12345"
+            ),
+        ]
 
         self.groups = [
             Group.objects.create(
@@ -74,6 +81,7 @@ class PostTest(TestCase):
 
         self.comment_text = "comment_test_text"
 
+        self.user = self.users[0]
         self.auth_client.force_login(self.user)
 
     def tearDown(self):
@@ -160,6 +168,25 @@ class PostTest(TestCase):
             follow=True
         )
 
+    def subscribe(self, c, author):
+        return c.post(
+            reverse("profile_follow",
+                    kwargs={"username": author.username}),
+            follow=True
+        )
+
+    def add_post_handler(self, c, num):
+        data = self.create_post_data(num)
+        response = self.add_post(c, data)
+        post = self.post_response_handler(response, data)
+        return (data, post)
+
+    def edit_post_handler(self, c, num, post):
+        data = self.create_post_data(num)
+        response = self.edit_post(c, post, data)
+        post = self.post_response_handler(response, data)
+        return (data, post)
+
     def check_post(self, c, post, data):
         time.sleep(self.CACHE_TIME)
 
@@ -225,6 +252,39 @@ class PostTest(TestCase):
 
         self.assertEqual(Comment.objects.count(), 1)
 
+    def check_subscriptions(self, c, subscriber, author, author_post):
+        time.sleep(self.CACHE_TIME)
+
+        response = c.post(reverse("follow_index"), follow=True)
+        self.assertContains(
+            response,
+            author_post.text,
+            count=1,
+            status_code=200,
+            html=False
+        )
+
+        response = c.post(
+            reverse("profile", kwargs={"username": subscriber.username}),
+            follow=True
+        )
+        subs_from_context = response.context["subscriptions"]
+        self.assertEqual(subs_from_context["subscribers_count"], 0)
+        self.assertEqual(subs_from_context["authors_count"], 1)
+
+        response = c.post(
+            reverse("profile", kwargs={"username": author.username}),
+            follow=True
+        )
+        subs_from_context = response.context["subscriptions"]
+        self.assertEqual(subs_from_context["subscribers_count"], 1)
+        self.assertEqual(subs_from_context["authors_count"], 0)
+
+        self.assertEqual(Follow.objects.count(), 1)
+        follow_instance = Follow.objects.first()
+        self.assertEqual(follow_instance.user, subscriber)
+        self.assertEqual(follow_instance.author, author)
+
     def check_cache_main_page(self, c, post):
         response = c.post(reverse("index"), follow=True)
         self.assertNotContains(
@@ -237,26 +297,38 @@ class PostTest(TestCase):
     def test_post_auth_user(self):
         c = self.auth_client
 
-        data = self.create_post_data(0)
-        response = self.add_post(c, data)
-        post = self.post_response_handler(response, data)
-        self.check_post(c, post, data)
+        data, post = self.add_post_handler(c, num=0)
+        self.check_post(c, post=post, data=data)
 
-        data = self.create_post_data(1)
-        response = self.edit_post(c, post, data)
-        post = self.post_response_handler(response, data)
-        self.check_cache_main_page(c, post)
-        self.check_post(c, post, data)
+        data, post = self.edit_post_handler(c, num=1, post=post)
+        self.check_cache_main_page(c, post=post)
+        self.check_post(c, post=post, data=data)
+
+    def test_follow_auth_user(self):
+        c = self.auth_client
+
+        author = self.users[0]
+        subscriber = self.users[1]
+        _, author_post = self.add_post_handler(c, num=0)
+
+        self.user = subscriber
+        self.auth_client.force_login(self.user)
+
+        self.subscribe(c, author=author)
+
+        self.check_subscriptions(
+            c,
+            subscriber=subscriber,
+            author=author,
+            author_post=author_post
+        )
 
     def test_cache(self):
         c = self.auth_client
 
-        data = self.create_post_data(0)
-        self.add_post(c, data)
+        self.add_post_handler(c, num=0)
 
-        data = self.create_post_data(1)
-        response = self.add_post(c, data)
-        post = self.post_response_handler(response, data)
+        _, post = self.add_post_handler(c, num=1)
 
         self.check_cache_main_page(c, post)
 
@@ -275,6 +347,22 @@ class PostTest(TestCase):
         )
         self.assertEqual(Post.objects.count(), 0)
 
+    def test_follow_unauth_user(self):
+        c = self.auth_client
+        self.add_post_handler(c, num=0)
+
+        c = self.unauth_client
+        response = self.subscribe(c, author=self.user)
+
+        self.assertRedirects(
+            response,
+            f"{reverse('login')}?next=/{self.user.username}/follow/",
+            status_code=302,
+            target_status_code=200,
+            fetch_redirect_response=True
+        )
+        self.assertEqual(Follow.objects.count(), 0)
+
     def test_wrong_image(self):
         c = self.auth_client
 
@@ -292,9 +380,7 @@ class PostTest(TestCase):
     def test_comment_auth_user(self):
         c = self.auth_client
 
-        post_data = self.create_post_data(0)
-        post_response = self.add_post(c, post_data)
-        post = self.post_response_handler(post_response, post_data)
+        post_data, post = self.add_post_handler(c, num=0)
 
         comment_data = self.create_comment_data()
         comment_response = self.add_comment(c, post, comment_data)
@@ -311,9 +397,7 @@ class PostTest(TestCase):
         auth_client = self.auth_client
         unauth_client = self.unauth_client
 
-        post_data = self.create_post_data(0)
-        post_response = self.add_post(auth_client, post_data)
-        post = self.post_response_handler(post_response, post_data)
+        _, post = self.add_post_handler(auth_client, num=0)
 
         comment_data = self.create_comment_data()
         comment_response = self.add_comment(unauth_client, post, comment_data)
