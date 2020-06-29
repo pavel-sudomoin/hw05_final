@@ -337,6 +337,36 @@ class PostTest(TestCase):
         response = c.post(reverse("follow_index"), follow=True)
         self.assertEqual(len(response.context["page"]), 0)
 
+    def test_comment_auth_user(self):
+        c = self.auth_client
+
+        post_data, post = self.add_post_handler(c, num=0)
+
+        comment_data = self.create_comment_data()
+        comment_response = self.add_comment(c, post, comment_data)
+        comment = self.comment_response_handler(comment_response, comment_data)
+        self.check_comment(
+            c,
+            comment=comment,
+            post=post,
+            comment_data=comment_data,
+            post_data=post_data
+        )
+
+    def test_wrong_image(self):
+        c = self.auth_client
+
+        data = self.create_post_data(0, filetype="txt")
+        response = self.add_post(c, data)
+
+        self.assertFormError(
+            response,
+            "form",
+            "image",
+            self.form_error_messages["image_wrong_file"]
+        )
+        self.assertEqual(Post.objects.count(), 0)
+
     def test_cache(self):
         c = self.auth_client
 
@@ -372,36 +402,6 @@ class PostTest(TestCase):
         )
 
         self.assertEqual(Follow.objects.count(), 0)
-
-    def test_wrong_image(self):
-        c = self.auth_client
-
-        data = self.create_post_data(0, filetype="txt")
-        response = self.add_post(c, data)
-
-        self.assertFormError(
-            response,
-            "form",
-            "image",
-            self.form_error_messages["image_wrong_file"]
-        )
-        self.assertEqual(Post.objects.count(), 0)
-
-    def test_comment_auth_user(self):
-        c = self.auth_client
-
-        post_data, post = self.add_post_handler(c, num=0)
-
-        comment_data = self.create_comment_data()
-        comment_response = self.add_comment(c, post, comment_data)
-        comment = self.comment_response_handler(comment_response, comment_data)
-        self.check_comment(
-            c,
-            comment=comment,
-            post=post,
-            comment_data=comment_data,
-            post_data=post_data
-        )
 
     def test_comment_unauth_user(self):
         auth_client = self.auth_client
