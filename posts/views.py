@@ -30,29 +30,26 @@ def create_paginator(request, post_list):
     paginator = Paginator(post_list, 10)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
-    return {
-        "paginator": paginator,
-        "page": page
-    }
+    return (paginator, page)
 
 
 def index(request):
     post_list = Post.objects.all()
-    paginator_data = create_paginator(request, post_list)
+    paginator, page = create_paginator(request, post_list)
     return render(request, "index.html", {
-        "page": paginator_data["page"],
-        "paginator": paginator_data["paginator"]
+        "page": page,
+        "paginator": paginator
     })
 
 
 def group_posts(request, slug):
     group = get_object_or_404(Group, slug=slug)
     post_list = group.posts.all()
-    paginator_data = create_paginator(request, post_list)
+    paginator, page = create_paginator(request, post_list)
     return render(request, "group.html", {
         "group": group,
-        "page": paginator_data["page"],
-        "paginator": paginator_data["paginator"]
+        "page": page,
+        "paginator": paginator
     })
 
 
@@ -74,12 +71,12 @@ def new_post(request):
 def profile(request, username):
     author = get_object_or_404(User, username=username)
     post_list = author.posts.all()
-    paginator_data = create_paginator(request, post_list)
+    paginator, page = create_paginator(request, post_list)
     subscriptions = get_subscriptions(user=request.user, author=author)
     return render(request, "profile.html", {
         "author": author,
-        "page": paginator_data["page"],
-        "paginator": paginator_data["paginator"],
+        "page": page,
+        "paginator": paginator,
         "author_posts_count": author.posts.count(),
         "subscriptions": subscriptions
     })
@@ -152,10 +149,10 @@ def follow_index(request):
     subscriptions = Follow.objects.filter(user=request.user)
     authors = [sub.author for sub in subscriptions]
     posts = Post.objects.filter(author__in=authors)
-    paginator_data = create_paginator(request, posts)
+    paginator, page = create_paginator(request, posts)
     return render(request, "follow.html", {
-        "page": paginator_data["page"],
-        "paginator": paginator_data["paginator"]
+        "page": page,
+        "paginator": paginator
     })
 
 
