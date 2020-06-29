@@ -25,7 +25,6 @@ print(MEDIA_ROOT)
 class PostTest(TestCase):
     CACHE_TIME = 21
 
-
     def _create_image(self):
         with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
             image = Image.new('RGB', (200, 200), 'white')

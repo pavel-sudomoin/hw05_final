@@ -153,5 +153,5 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
     }
 }
-#django.core.cache.backends.locmem.LocMemCache
-#django.core.cache.backends.dummy.DummyCache
+# django.core.cache.backends.locmem.LocMemCache
+# django.core.cache.backends.dummy.DummyCache
