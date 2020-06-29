@@ -80,11 +80,14 @@ class PostTest(TestCase):
 
         self.comment_text = "comment_test_text"
 
-        self.user = self.users[0]
-        self.auth_client.force_login(self.user)
+        self.force_login(self.users[0])
 
     def tearDown(self):
         rmtree(MEDIA_ROOT, ignore_errors=True)
+
+    def force_login(self, user):
+        self.user = user
+        self.auth_client.force_login(self.user)
 
     def create_url_list_for_check_post(self, post, group):
         return [
@@ -319,8 +322,7 @@ class PostTest(TestCase):
         subscriber = self.users[1]
         _, author_post = self.add_post_handler(c, num=0)
 
-        self.user = subscriber
-        self.auth_client.force_login(self.user)
+        self.force_login(subscriber)
 
         self.subscribe(c, author=author)
 
@@ -330,6 +332,10 @@ class PostTest(TestCase):
             author=author,
             author_post=author_post
         )
+
+        self.force_login(author)
+        response = c.post(reverse("follow_index"), follow=True)
+        self.assertEqual(len(response.context["page"]), 0)
 
     def test_cache(self):
         c = self.auth_client
