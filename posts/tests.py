@@ -1,19 +1,13 @@
-from django.test import TestCase, Client, override_settings
-
-from django.contrib.auth import get_user_model
-
-from django.urls import reverse
-
-from .models import Post, Group, Comment, Follow
-
-from shutil import rmtree
-
-from PIL import Image
-
 import tempfile
-
 import time
 
+from django.test import TestCase, Client, override_settings
+from django.contrib.auth import get_user_model
+from django.urls import reverse
+from shutil import rmtree
+from PIL import Image
+
+from .models import Post, Group, Comment, Follow
 
 User = get_user_model()
 

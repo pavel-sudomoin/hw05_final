@@ -1,15 +1,10 @@
 from django.shortcuts import render, get_object_or_404, redirect
-
 from django.contrib.auth.decorators import login_required
-
 from django.contrib.auth import get_user_model
-
 from django.core.paginator import Paginator
 
-from .models import Post, Group, Comment, Follow
-
+from .models import Post, Group, Follow
 from .forms import PostForm, CommentForm
-
 
 User = get_user_model()
 
