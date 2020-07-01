@@ -34,7 +34,7 @@ class Post(models.Model):
         return self.text
 
     class Meta:
-        ordering = ["-pub_date"]
+        ordering = ("-pub_date",)
 
 
 class Comment(models.Model):
@@ -55,7 +55,7 @@ class Comment(models.Model):
         return self.text
 
     class Meta:
-        ordering = ["-created"]
+        ordering = ("-created",)
 
 
 class Follow(models.Model):
@@ -71,4 +71,4 @@ class Follow(models.Model):
     )
 
     class Meta:
-        unique_together = ['user', 'author']
+        unique_together = ('user', 'author')
