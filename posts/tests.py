@@ -130,7 +130,11 @@ class PostTest(TestCase):
         return {
             "text": data["text"],
             "group": data["group"].pk,
-            "image": SimpleUploadedFile("img.png", data["image"].read(), content_type='image/gif')
+            "image": SimpleUploadedFile(
+                "img.png",
+                data["image"].read(),
+                content_type='image/gif'
+            )
         }
 
     def post_response_handler(self, response, data):
