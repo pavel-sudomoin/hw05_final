@@ -33,8 +33,7 @@ def create_paginator(request, post_list):
     return (paginator, page)
 
 
-# Замечание: Кэширование потерял - @cache_page(20, key_prefix='index_page')
-# Ответ: Кэширование настроено в самом шаблоне "index.html" - {% cache 20 index_page %}
+# Кэширование настроено в самом шаблоне "index.html" {% cache 20 index_page %}
 def index(request):
     post_list = Post.objects.all()
     paginator, page = create_paginator(request, post_list)
@@ -167,8 +166,7 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     author = get_object_or_404(User, username=username)
-    try:
-        Follow.objects.get(user=request.user, author=author).delete()
-    except Follow.DoesNotExist:
-        pass
+    subscription = Follow.objects.filter(user=request.user, author=author)
+    if subscription.exists():
+        subscription.delete()
     return redirect("profile", username=username)
