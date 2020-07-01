@@ -33,6 +33,8 @@ def create_paginator(request, post_list):
     return (paginator, page)
 
 
+# Замечание: Кэширование потерял - @cache_page(20, key_prefix='index_page')
+# Ответ: Кэширование настроено в самом шаблоне "index.html" - {% cache 20 index_page %}
 def index(request):
     post_list = Post.objects.all()
     paginator, page = create_paginator(request, post_list)
