@@ -1,8 +1,8 @@
 import tempfile
-import time
 
 from django.test import TestCase, Client, override_settings
 from django.contrib.auth import get_user_model
+from django.core.cache import cache
 from django.urls import reverse
 from shutil import rmtree
 from PIL import Image
@@ -12,13 +12,16 @@ from .models import Post, Group, Comment, Follow
 User = get_user_model()
 
 MEDIA_ROOT = tempfile.mkdtemp()
-print(MEDIA_ROOT)
+DISABLE_CACHE = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+    }
+}
 
 
+@override_settings(CACHES=DISABLE_CACHE)
 @override_settings(MEDIA_ROOT=MEDIA_ROOT)
 class PostTest(TestCase):
-    CACHE_TIME = 21
-
     def _create_image(self):
         with tempfile.NamedTemporaryFile(suffix='.png', delete=False) as f:
             image = Image.new('RGB', (200, 200), 'white')
@@ -193,8 +196,6 @@ class PostTest(TestCase):
         )
 
     def check_post(self, c, post, data):
-        time.sleep(self.CACHE_TIME)
-
         group = data["group"]
         url_list = self.create_url_list_for_check_post(post, group)
 
@@ -227,8 +228,6 @@ class PostTest(TestCase):
         self.assertEqual(Post.objects.count(), 1)
 
     def check_comment(self, c, post, comment, post_data, comment_data):
-        time.sleep(self.CACHE_TIME)
-
         group = post_data["group"]
         url_list = self.create_url_list_for_check_post(post, group)
 
@@ -258,8 +257,6 @@ class PostTest(TestCase):
         self.assertEqual(Comment.objects.count(), 1)
 
     def check_subscriptions(self, c, subscriber, author, author_post):
-        time.sleep(self.CACHE_TIME)
-
         response = c.post(reverse("follow_index"), follow=True)
         self.assertContains(
             response,
@@ -290,15 +287,6 @@ class PostTest(TestCase):
         self.assertEqual(follow_instance.user, subscriber)
         self.assertEqual(follow_instance.author, author)
 
-    def check_cache_main_page(self, c, post):
-        response = c.post(reverse("index"), follow=True)
-        self.assertNotContains(
-            response,
-            post.text,
-            status_code=200,
-            html=False
-        )
-
     def test_post_auth_user(self):
         c = self.auth_client
 
@@ -306,7 +294,6 @@ class PostTest(TestCase):
         self.check_post(c, post=post, data=data)
 
         data, post = self.edit_post_handler(c, num=1, post=post)
-        self.check_cache_main_page(c, post=post)
         self.check_post(c, post=post, data=data)
 
     def test_follow_auth_user(self):
@@ -360,15 +347,6 @@ class PostTest(TestCase):
             self.form_error_messages["image_wrong_file"]
         )
         self.assertEqual(Post.objects.count(), 0)
-
-    def test_cache(self):
-        c = self.auth_client
-
-        self.add_post_handler(c, num=0)
-
-        _, post = self.add_post_handler(c, num=1)
-
-        self.check_cache_main_page(c, post)
 
     def test_post_unauth_user(self):
         c = self.unauth_client
@@ -432,3 +410,56 @@ class PostTest(TestCase):
     def test_404_response(self):
         response = self.auth_client.get("/some-wrong-test-url/")
         self.assertEqual(response.status_code, 404)
+
+
+class CacheTest(TestCase):
+    CACHE_TIME = 21
+
+    def setUp(self):
+        self.client = Client()
+
+        self.user = User.objects.create_user(
+            username="test_user",
+            email="test@test.com",
+            password="12345"
+        )
+
+        self.texts = (
+            "Lorem ipsum dolor sit amet",
+            "consectetur adipiscing elit"
+        )
+
+        self.client.force_login(self.user)
+
+    def add_post(self, c, num):
+        data = {"text": self.texts[num]}
+        response = c.post(
+            reverse("new_post"),
+            data=data,
+            follow=True
+        )
+        self.assertEqual(response.status_code, 200)
+        post = self.user.posts.get(text=data["text"])
+        return post.text
+
+    def test_cache(self):
+        c = self.client
+
+        self.add_post(c, num=0)
+        text = self.add_post(c, num=1)
+
+        self.assertNotContains(
+            c.post(reverse("index"), follow=True),
+            text,
+            status_code=200,
+            html=False
+        )
+
+        cache.clear()
+
+        self.assertContains(
+            c.post(reverse("index"), follow=True),
+            text,
+            status_code=200,
+            html=False
+        )
