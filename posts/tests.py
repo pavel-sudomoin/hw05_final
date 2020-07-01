@@ -80,6 +80,11 @@ class PostTest(TestCase):
         self.force_login(self.users[0])
 
     def tearDown(self):
+        # добавил закрытие всех файлов после прохождения всех тестов
+        # на мой взгляд, так будет проще, чем пользоваться оператором with
+        for files_collection in self.files.values():
+            for open_file in files_collection:
+                open_file.close()
         rmtree(MEDIA_ROOT, ignore_errors=True)
 
     def force_login(self, user):
