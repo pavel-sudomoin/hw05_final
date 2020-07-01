@@ -1,5 +1,6 @@
 import tempfile
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, Client, override_settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
@@ -81,7 +82,6 @@ class PostTest(TestCase):
 
     def tearDown(self):
         # добавил закрытие всех файлов после прохождения всех тестов
-        # на мой взгляд, так будет проще, чем пользоваться оператором with
         for files_collection in self.files.values():
             for open_file in files_collection:
                 open_file.close()
@@ -130,7 +130,7 @@ class PostTest(TestCase):
         return {
             "text": data["text"],
             "group": data["group"].pk,
-            "image": data["image"]
+            "image": SimpleUploadedFile("img.png", data["image"].read(), content_type='image/gif')
         }
 
     def post_response_handler(self, response, data):
