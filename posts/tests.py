@@ -40,7 +40,7 @@ class PostTest(TestCase):
         self.unauth_client = Client()
         self.auth_client = Client()
 
-        self.users = [
+        self.users = (
             User.objects.create_user(
                 username="test_user_1",
                 email="test_1@test.com",
@@ -51,9 +51,9 @@ class PostTest(TestCase):
                 email="test_2@test.com",
                 password="12345"
             ),
-        ]
+        )
 
-        self.groups = [
+        self.groups = (
             Group.objects.create(
                 title="test_title_1",
                 slug="test_slug_1"
@@ -62,15 +62,15 @@ class PostTest(TestCase):
                 title="test_title_2",
                 slug="test_slug_2"
             )
-        ]
-        self.texts = [
+        )
+        self.texts = (
             "Lorem ipsum dolor sit amet",
             "consectetur adipiscing elit"
-        ]
+        )
         self.files = {
-            "img": [self._create_image(),
-                    self._create_image()],
-            "txt": [self._create_txt()]
+            "img": (self._create_image(),
+                    self._create_image()),
+            "txt": (self._create_txt(),)
         }
         self.form_error_messages = {
             "image_wrong_file": "Загрузите правильное изображение. "
@@ -90,7 +90,7 @@ class PostTest(TestCase):
         self.auth_client.force_login(self.user)
 
     def create_url_list_for_check_post(self, post, group):
-        return [
+        return (
             {
                 "nameview": "index",
                 "kwargs": {},
@@ -112,7 +112,7 @@ class PostTest(TestCase):
                            "post_id": post.pk},
                 "display_comments": True
             }
-        ]
+        )
 
     def create_post_data(self, var, filetype="img"):
         return {
