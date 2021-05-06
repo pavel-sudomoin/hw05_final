@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}О технологиях в проекте{% endblock %}
+{% block content %}
+{% load user_filters %}
+  <main role="main" class="container">
+    <div class="row">
+      <div class="col-md-3 mb-3 mt-1">
+        <div class="card">
+          <div class="card-body">
+            <ul class="list-group list-group-flush">
+              <li class="list-group-item">
+                <div class="h3">
+                 Технологии
+                </div> 
+              </li>
+              <li class="list-group-item">
+                <div class="h6 text-muted">
+                  Что применялось в данном проекте
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-9">
+        <div class="card-body">
+          <div class="card-text">
+            <p>При разработке данного приложения были использованы следующие технологии:</p>
+            <ul style="list-style-type: disc; margin-left: 20px;">
+              <li>Django 2.2</li>
+              <li>Python 3.8</li>
+              <li>Django HTML Templates</li>
+              <li>Django Unittest</li>
+              <li>SQLite</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+{% endblock %}
